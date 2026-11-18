@@ -5,6 +5,7 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AuthApiError,
   enrollVoice,
   fetchAuthStatus,
   login,
@@ -300,8 +301,8 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     setError(null);
     if (pin.length < 4) { setError("Enter your PIN."); return; }
     setLoading(true);
-    // We do PIN + voice together in /login — so first move to voice phase
-    setInfo("PIN accepted. Now verifying voice...");
+    // The backend verifies the PIN and voice together after voice capture.
+    setInfo("PIN captured for verification. Continue with the voice check when ready.");
     setPhase("login_voice");
     setLoading(false);
   };
@@ -320,12 +321,24 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     } catch (e) {
       setVoiceActive(false);
       const msg = e instanceof Error ? e.message : "Login failed.";
-      if (msg.includes("LOCKDOWN") || msg.includes("INTRUDER")) {
+      const apiError = e instanceof AuthApiError ? e : null;
+      if (apiError?.code === "INTRUDER_LOCKDOWN" || msg.includes("LOCKDOWN") || msg.includes("INTRUDER")) {
+        setFailed(MAX_ATTEMPTS);
         setPhase("locked");
       } else {
-        const newFailed = failedAttempts + 1;
-        setFailed(newFailed);
-        setError(msg);
+        if (apiError?.code === "PIN_INVALID") {
+          const attemptsUsed = apiError.remainingAttempts === undefined
+            ? Math.min(MAX_ATTEMPTS, failedAttempts + 1)
+            : Math.min(MAX_ATTEMPTS, Math.max(0, MAX_ATTEMPTS - apiError.remainingAttempts));
+          setFailed(attemptsUsed);
+          setError("Incorrect PIN. Check the saved PIN before trying again.");
+        } else if (apiError?.code === "VOICE_MISMATCH") {
+          const remainingAttempts = apiError.remainingAttempts ?? MAX_ATTEMPTS;
+          setFailed(Math.min(MAX_ATTEMPTS, Math.max(0, MAX_ATTEMPTS - remainingAttempts)));
+          setError("PIN verified, but voice verification did not match. Check microphone access and repeat the enrolled passphrase. This did not use a PIN attempt.");
+        } else {
+          setError(msg);
+        }
         setPin("");
         setPhase("login_pin");
       }

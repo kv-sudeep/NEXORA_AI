@@ -41,11 +41,26 @@ function buildHeaders(requireAuth = false): HeadersInit {
   return headers;
 }
 
+export class AuthApiError extends Error {
+  constructor(
+    message: string,
+    public readonly code?: string,
+    public readonly remainingAttempts?: number,
+  ) {
+    super(message);
+    this.name = "AuthApiError";
+  }
+}
+
 async function handleResponse<T>(res: Response): Promise<T> {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const message = (data as Record<string, string>).error ?? res.statusText;
-    throw new Error(message);
+    const payload = data as Partial<LoginError>;
+    throw new AuthApiError(
+      typeof payload.error === "string" ? payload.error : res.statusText,
+      payload.code,
+      payload.remaining_attempts,
+    );
   }
   return data as T;
 }

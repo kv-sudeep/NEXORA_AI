@@ -173,6 +173,7 @@ def login():
         remaining = MAX_ATTEMPTS - get_failed_attempts()
         return jsonify({
             "error": "Incorrect PIN.",
+            "code": "PIN_INVALID",
             "remaining_attempts": remaining,
         }), 401
 
@@ -195,6 +196,8 @@ def login():
     if not voice_match:
         return jsonify({
             "error": "Voice fingerprint mismatch.",
+            "code": "VOICE_MISMATCH",
+            "remaining_attempts": MAX_ATTEMPTS,
             "similarity": round(score, 4),
             "threshold": 0.95,
         }), 401
