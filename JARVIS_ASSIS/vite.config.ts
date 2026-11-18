@@ -10,14 +10,12 @@ export default defineConfig({
   vite: {
     server: {
       allowedHosts: ["sb-5vo8alrbhws4.vercel.run"],
-    },
-  },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:5000',
-        changeOrigin: true,
-        secure: false,
+      proxy: {
+        "/api": {
+          target: "http://127.0.0.1:5000",
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
   },
