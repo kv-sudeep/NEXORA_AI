@@ -77,13 +77,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   // Persist auth across in-app navigation using sessionStorage
   // (token itself stays in-memory in auth_api.ts module; sessionStorage only marks the session)
-  const [authenticated, setAuthenticated] = useState<boolean>(() => {
-    try {
-      return sessionStorage.getItem(SESSION_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
+  const [authenticated, setAuthenticated] = useState(false);
   const location = useLocation();
 
   // Keep session marker in sync when user authenticates
@@ -99,6 +93,12 @@ function RootComponent() {
 
   // Clear session on explicit sign-out (listen to storage events from other tabs)
   useEffect(() => {
+    try {
+      setAuthenticated(sessionStorage.getItem(SESSION_KEY) === "1");
+    } catch {
+      setAuthenticated(false);
+    }
+
     const onStorage = (e: StorageEvent) => {
       if (e.key === SESSION_KEY && e.newValue === null) {
         setAuthenticated(false);
